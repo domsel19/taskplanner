@@ -17,6 +17,7 @@ public class Main extends JFrame {
     private JList<String> taskList = new JList<>(listModel);
     private JTextField taskInput = new JTextField(30);
     private JButton addButton = new JButton("Add Task");
+    private JButton deleteButton = new JButton("Delete Task");
 
     public Main() {
         // window-settings
@@ -30,12 +31,14 @@ public class Main extends JFrame {
         JPanel inputPanel = new JPanel();
         inputPanel.add(taskInput);
         inputPanel.add(addButton);
+        inputPanel.add(deleteButton);
 
         add(inputPanel, BorderLayout.NORTH);
 
         add(new JScrollPane(taskList), BorderLayout.CENTER);
 
         addButton.addActionListener(e -> addTask());
+        deleteButton.addActionListener(e -> deleteTask());
 
         refreshTaskList();
     }
@@ -89,6 +92,25 @@ public class Main extends JFrame {
 
         refreshTaskList();
         taskInput.setText("");
+    }
+
+    public void deleteTask() {
+        String taskName = taskList.getSelectedValue();
+
+        if (taskName == null) {
+            return;
+        }
+        String sql = "DELETE FROM tasks WHERE task = ?";
+
+        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:tasks.db");
+                PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setString(1, taskName);
+            int rows = statement.executeUpdate();
+            System.out.println("Deleted rows:" + rows);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        refreshTaskList();
     }
 
     public void ensureTableExists() {
