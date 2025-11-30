@@ -1,0 +1,21 @@
+# Maven target folder
+target/
+
+# Logs
+*.log
+
+# Compiled classes
+*.class
+
+# SQLite database (local data)
+*.db
+
+# VSCode
+.vscode/
+
+# IntelliJ
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
