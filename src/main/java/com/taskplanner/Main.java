@@ -10,6 +10,8 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.event.ChangeListener;
 import javax.swing.table.AbstractTableModel;
+import javax.swing.table.DefaultTableCellRenderer;
+import javax.swing.SwingConstants;
 
 import java.util.List;
 import java.util.ArrayList;
@@ -31,10 +33,14 @@ public class Main extends JFrame {
     private JButton addButton = new JButton("Add Task");
     private JButton deleteButton = new JButton("Delete Task");
     private JButton editButton = new JButton("Edit Task");
+    private static final String url = "jdbc:sqlite:tasks.db";
+    Color deepblue = new Color (0, 80, 160);
 
     public Main() {
         // window-settings
-        setExtendedState(JFrame.MAXIMIZED_BOTH);
+        //setExtendedState(JFrame.MAXIMIZED_BOTH); // fullscreen
+        setSize(800,450);
+        setLocationRelativeTo(null);
         setTitle("Task Planner");
         Image icon = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/task.png"));
         setIconImage(icon);
@@ -87,6 +93,21 @@ public class Main extends JFrame {
 
         TaskTableModel model = new TaskTableModel(tasks);
         taskTable.setModel(model);
+
+        DoneCellRenderer renderer = new DoneCellRenderer();
+        for(int col = 0; col<taskTable.getColumnCount();col++){
+            if(col != 3){
+            taskTable.getColumnModel().getColumn(col).setCellRenderer(renderer);
+            }
+        }
+
+        // center text in JLable
+        DefaultTableCellRenderer center = new DefaultTableCellRenderer();
+        center.setHorizontalAlignment(SwingConstants.CENTER);
+
+        for(int i=0; i<taskTable.getColumnCount()-1; i++) {
+            taskTable.getColumnModel().getColumn(i).setCellRenderer(center);
+        }
         taskTable.setFont(new Font("SansSerif", Font.PLAIN, 24));
     }
 
@@ -94,7 +115,7 @@ public class Main extends JFrame {
         List<Task> result = new ArrayList<>();
 
         // database connection
-        String url = "jdbc:sqlite:tasks.db";
+        
         try (
                 Connection conn = DriverManager.getConnection(url);
                 PreparedStatement statement = conn
@@ -103,9 +124,8 @@ public class Main extends JFrame {
                 ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
                 Task t = new Task();
-                t.id = rs.getInt("id");
                 t.task = rs.getString("task");
-
+                t.id = rs.getInt("id");
                 t.startDate = LocalDate.parse(rs.getString("task_date"));
 
                 String fd = rs.getString("finish_date");
@@ -137,7 +157,6 @@ public class Main extends JFrame {
         if (taskName.isEmpty()) {
             return;
         }
-        String url = "jdbc:sqlite:tasks.db";
         try (
                 Connection conn = DriverManager.getConnection(url);
                 PreparedStatement statement = conn
@@ -171,7 +190,7 @@ public class Main extends JFrame {
 
         String sql = "DELETE FROM tasks WHERE id = ?";
 
-        try (Connection conn = DriverManager.getConnection("jdbc:sqlite:tasks.db");
+        try (Connection conn = DriverManager.getConnection(url);
                 PreparedStatement statement = conn.prepareStatement(sql)) {
             statement.setInt(1, selected.id);
             statement.executeUpdate();
@@ -243,7 +262,7 @@ public class Main extends JFrame {
 
             String sql = "UPDATE tasks SET task = ?, task_date = ?, finish_date = ? WHERE id = ?";
 
-            try (Connection conn = DriverManager.getConnection("jdbc:sqlite:tasks.db");
+            try (Connection conn = DriverManager.getConnection(url);
                     PreparedStatement statement = conn.prepareStatement(sql)) {
                 statement.setString(1, newName);
                 statement.setString(2, startDateNewString);
@@ -261,8 +280,29 @@ public class Main extends JFrame {
         editdialog.setVisible(true);
     }
 
+    public class DoneCellRenderer extends DefaultTableCellRenderer {
+     @Override
+     public Component getTableCellRendererComponent (JTable table, Object value, boolean is_Selected, boolean hasFocus, int row, int col){
+        Component c = super.getTableCellRendererComponent (table, value, is_Selected, hasFocus, row, col);
+
+        boolean done = (boolean) table.getModel().getValueAt(row, 3);
+        if(done && is_Selected){
+            c.setBackground(deepblue);
+            c.setForeground(Color.WHITE);
+        } else if (done && !is_Selected){
+            c.setBackground(deepblue);
+            c.setForeground(Color.BLACK);
+        }
+        if(is_Selected){
+            c.setBackground(table.getSelectionBackground());
+            c.setForeground(table.getSelectionForeground());
+        }
+        return c;
+     } 
+    };
+
     public class TaskTableModel extends AbstractTableModel {
-        private String[] columns = { "ID", "Task", "Start Date", "Finish Date", "Done" };
+        private String[] columns = { "Task", "Start Date", "Finish Date", "Done" };
         private List<Task> tasks;
 
         public TaskTableModel(List<Task> tasks) {
@@ -287,11 +327,10 @@ public class Main extends JFrame {
         @Override
         public Class<?> getColumnClass(int columnIndex) {
             return switch (columnIndex) {
-                case 0 -> Integer.class; // ID
-                case 1 -> String.class; // Task name
-                case 2 -> LocalDate.class; // Start date
-                case 3 -> LocalDate.class; // Finish date
-                case 4 -> Boolean.class; // Done
+                case 0 -> String.class; // Task name
+                case 1 -> LocalDate.class; // Start date
+                case 2 -> LocalDate.class; // Finish date
+                case 3 -> Boolean.class; // Done
                 default -> Object.class;
             };
         }
@@ -300,33 +339,40 @@ public class Main extends JFrame {
         public Object getValueAt(int row, int col) {
             Task t = tasks.get(row);
             return switch (col) {
-                case 0 -> t.id;
-                case 1 -> t.task;
-                case 2 -> t.startDate;
-                case 3 -> t.finishDate;
-                case 4 -> t.isDone;
+                case 0 -> t.task;
+                case 1 -> t.startDate;
+                case 2 -> t.finishDate;
+                case 3 -> t.isDone;
                 default -> "";
             };
         }
 
         @Override
         public boolean isCellEditable(int row, int col) {
-            return col == 4;
+            return col == 3;
         }
 
         @Override
         public void setValueAt(Object value, int row, int col) {
             Task t = tasks.get(row);
+            String sql = "UPDATE tasks SET is_done = ? WHERE id = ?";
 
-            switch (col) {
-                case 4 -> t.isDone = (Boolean) value;
+            if(col==3){
+                t.isDone = (boolean) value;
+                try (Connection conn = DriverManager.getConnection(url);
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+                    stmt.setInt(1, t.isDone ? 1 : 0);
+                    stmt.setInt(2, t.id);
+                    stmt.execute();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    }
             }
             fireTableRowsUpdated(row, row);
         }
     }
 
     public void ensureTableExists() {
-        String url = "jdbc:sqlite:tasks.db";
 
         String sql = "CREATE TABLE IF NOT EXISTS tasks ("
                 + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
