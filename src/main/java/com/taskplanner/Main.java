@@ -7,6 +7,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.sql.Connection;
 import java.awt.*;
+import java.awt.event.*;
 import javax.swing.*;
 import javax.swing.event.ChangeListener;
 import javax.swing.table.AbstractTableModel;
@@ -34,7 +35,7 @@ public class Main extends JFrame {
     private JButton deleteButton = new JButton("Delete Task");
     private JButton editButton = new JButton("Edit Task");
     private static final String url = "jdbc:sqlite:tasks.db";
-    Color deepblue = new Color (0, 80, 160);
+
 
     public Main() {
         // window-settings
@@ -63,7 +64,22 @@ public class Main extends JFrame {
         taskTable = new JTable();
         taskTable.setFont(new Font("SansSerif", Font.PLAIN, 20));
         taskTable.setRowHeight(28);
-        add(new JScrollPane(taskTable), BorderLayout.CENTER);
+
+        JScrollPane scroll = new JScrollPane(taskTable);
+        add(scroll, BorderLayout.CENTER);
+
+        scroll.getViewport().addMouseListener(new MouseAdapter(){
+            @Override
+            public void mouseClicked(MouseEvent e){
+                int row = taskTable.rowAtPoint(e.getPoint());
+                if(row == -1){
+                    taskTable.clearSelection();
+                    taskTable.getSelectionModel().setAnchorSelectionIndex(-1);
+                    taskTable.getSelectionModel().setLeadSelectionIndex(-1);
+                    taskTable.repaint();
+                }
+            }
+        });
 
         addButton.addActionListener(e -> addTask());
         deleteButton.addActionListener(e -> deleteTask());
@@ -94,19 +110,11 @@ public class Main extends JFrame {
         TaskTableModel model = new TaskTableModel(tasks);
         taskTable.setModel(model);
 
-        DoneCellRenderer renderer = new DoneCellRenderer();
-        for(int col = 0; col<taskTable.getColumnCount();col++){
-            if(col != 3){
-            taskTable.getColumnModel().getColumn(col).setCellRenderer(renderer);
-            }
-        }
-
-        // center text in JLable
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
 
-        for(int i=0; i<taskTable.getColumnCount()-1; i++) {
-            taskTable.getColumnModel().getColumn(i).setCellRenderer(center);
+        for(col=0;col<taskTable.getColumnCount();col++){
+            taskTable.getColumnModel().getColumn(col).setCellRenderer(center);
         }
         taskTable.setFont(new Font("SansSerif", Font.PLAIN, 24));
     }
@@ -280,26 +288,6 @@ public class Main extends JFrame {
         editdialog.setVisible(true);
     }
 
-    public class DoneCellRenderer extends DefaultTableCellRenderer {
-     @Override
-     public Component getTableCellRendererComponent (JTable table, Object value, boolean is_Selected, boolean hasFocus, int row, int col){
-        Component c = super.getTableCellRendererComponent (table, value, is_Selected, hasFocus, row, col);
-
-        boolean done = (boolean) table.getModel().getValueAt(row, 3);
-        if(done && is_Selected){
-            c.setBackground(deepblue);
-            c.setForeground(Color.WHITE);
-        } else if (done && !is_Selected){
-            c.setBackground(deepblue);
-            c.setForeground(Color.BLACK);
-        }
-        if(is_Selected){
-            c.setBackground(table.getSelectionBackground());
-            c.setForeground(table.getSelectionForeground());
-        }
-        return c;
-     } 
-    };
 
     public class TaskTableModel extends AbstractTableModel {
         private String[] columns = { "Task", "Start Date", "Finish Date", "Done" };
