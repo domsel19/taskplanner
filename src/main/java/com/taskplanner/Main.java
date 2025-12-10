@@ -199,16 +199,7 @@ public class Main extends JFrame {
             return;
         }
 
-        String sql = "DELETE FROM tasks WHERE id = ?";
-
-        try (Connection conn = DriverManager.getConnection(url);
-                PreparedStatement statement = conn.prepareStatement(sql)) {
-            statement.setInt(1, selected.id);
-            statement.executeUpdate();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        refreshTaskList();
+        
     }
 
     public void editTask() {
@@ -297,6 +288,29 @@ public class Main extends JFrame {
         showFinishedTasksDialog.setLayout(new BorderLayout());
 
         JPanel panel = new JPanel(new GridLayout(3, 2, 10, 10));   
+
+        String sql = "DELETE FROM tasks WHERE id = ?";
+
+        try (Connection conn = DriverManager.getConnection(url);
+                PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setInt(1, selected.id);
+            statement.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        String sql = "INSERT INTO tasks (task, task_date, finish_date, is_done) VALUES (?, ?, ?, ?)";
+
+        try (Connection conn = DriverManager.getConnection(url);
+                PreparedStatement statement = conn.prepareStatement(sql)) {
+            statement.setInt(1, selected.id);
+            statement.setInt(2, )
+            statement.executeUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        refreshTaskList();
+        refreshTaskList();
     }*/
 
     public class TaskTableModel extends AbstractTableModel {
