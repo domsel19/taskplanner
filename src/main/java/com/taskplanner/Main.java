@@ -35,6 +35,7 @@ public class Main extends JFrame {
     private JButton deleteButton = new JButton("Delete Task");
     private JButton editButton = new JButton("Edit Task");
     private static final String url = "jdbc:sqlite:tasks.db";
+    private JButton doneTasksButton = new JButton("Finished Tasks");
 
 
     public Main() {
@@ -67,6 +68,8 @@ public class Main extends JFrame {
 
         JScrollPane scroll = new JScrollPane(taskTable);
         add(scroll, BorderLayout.CENTER);
+
+        inputPanel.add(doneTasksButton);
 
         scroll.getViewport().addMouseListener(new MouseAdapter(){
             @Override
@@ -113,7 +116,7 @@ public class Main extends JFrame {
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
 
-        for(col=0;col<taskTable.getColumnCount();col++){
+        for(int col=0;col<taskTable.getColumnCount()-1;col++){
             taskTable.getColumnModel().getColumn(col).setCellRenderer(center);
         }
         taskTable.setFont(new Font("SansSerif", Font.PLAIN, 24));
@@ -288,6 +291,13 @@ public class Main extends JFrame {
         editdialog.setVisible(true);
     }
 
+    /*public void showFinishedTasks(){
+     JDialog showFinishedTasksDialog = new JDialog(this, "Finished Tasks", true);
+        showFinishedTasksDialog.setSize(800, 500);
+        showFinishedTasksDialog.setLayout(new BorderLayout());
+
+        JPanel panel = new JPanel(new GridLayout(3, 2, 10, 10));   
+    }*/
 
     public class TaskTableModel extends AbstractTableModel {
         private String[] columns = { "Task", "Start Date", "Finish Date", "Done" };
