@@ -37,7 +37,6 @@ public class Main extends JFrame {
     private JButton deleteButton = new JButton("Delete Task");
     private JButton editButton = new JButton("Edit Task");
     private static final String url = "jdbc:sqlite:tasks.db";
-    private static final String url_Finished = "jdbc:sqlite:finished_tasks.db";
     private JButton finishedTasksButton = new JButton("Finished Tasks");
 
 
@@ -131,27 +130,40 @@ public class Main extends JFrame {
                 int row = e.getFirstRow();
                 int col = e.getColumn();
                 if (col == 3){
-                    Task t = model.getTaskAt(row);
+                    Task t = ((TaskTableModel) taskTable.getModel()).tasks.get(row);
+                    //Task t = model.getTaskAt(row);
                     moveToFinishedTasks(t);
                 }
             }
         });
     }
 
-    public void refreshFinishedTaskList() {
-        ensureTableExists();
+    public void refreshFinishedTaskList(JTable table) {
+        ensureFinishedTableExists();
         List<Task> ftasks = loadTasksFromFinishedDatabase();
 
         TaskTableModel fmodel = new TaskTableModel(ftasks);
-        taskTable.setModel(fmodel);
+        table.setModel(fmodel);
 
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
 
-        for(int col=0;col<taskTable.getColumnCount()-1;col++){
-            taskTable.getColumnModel().getColumn(col).setCellRenderer(center);
+        for(int col=0;col<table.getColumnCount()-1;col++){
+            table.getColumnModel().getColumn(col).setCellRenderer(center);
         }
-        taskTable.setFont(new Font("SansSerif", Font.PLAIN, 24));
+        table.setFont(new Font("SansSerif", Font.PLAIN, 24));
+
+        fmodel.addTableModelListener(e->{
+            if (e.getType() == TableModelEvent.UPDATE){
+                int row = e.getFirstRow();
+                int col = e.getColumn();
+                if (col == 3){
+                    Task t = ((TaskTableModel) taskTable.getModel()).tasks.get(row);
+                    //Task t = model.getTaskAt(row);
+                    moveToTasks(t);
+                }
+            }
+        });
     }
 
     public List<Task> loadTasksFromDatabase() {
@@ -190,10 +202,10 @@ public class Main extends JFrame {
         // database connection
         
         try (
-                Connection conn = DriverManager.getConnection(url_Finished);
+                Connection conn = DriverManager.getConnection(url);
                 PreparedStatement statement = conn
                         .prepareStatement(
-                                "SELECT id, task, task_date, finish_date, is_done FROM tasks ORDER BY task_date ASC");
+                                "SELECT id, task, task_date, finish_date, is_done FROM finishedtasks ORDER BY task_date ASC");
                 ResultSet rs = statement.executeQuery()) {
             while (rs.next()) {
                 Task t = new Task();
@@ -362,9 +374,9 @@ public class Main extends JFrame {
         finishedTaskTable.setRowHeight(28);
 
         JScrollPane scrollFinished = new JScrollPane(finishedTaskTable);
-        add(scrollFinished, BorderLayout.CENTER);
+        showFinishedTasksDialog.add(scrollFinished, BorderLayout.CENTER);
 
-        refreshTaskList();
+        refreshFinishedTaskList(finishedTaskTable);
 
         showFinishedTasksDialog.setLocationRelativeTo(this);
         showFinishedTasksDialog.setVisible(true);
@@ -387,6 +399,31 @@ public class Main extends JFrame {
             statement.setString(2, dateString);
             statement.setString(3, finishDateString);
             statement.setInt(4, 1);
+            statement.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void moveToTasks(Task t){
+        String taskName = t.task;
+        String dateString = t.startDate.toString();
+        String finishDateString = t.finishDate.toString();
+
+        if (taskName.isEmpty()) {
+            return;
+        }
+        try (
+                Connection conn = DriverManager.getConnection(url);
+                PreparedStatement statement = conn
+                        .prepareStatement(
+                                "INSERT INTO tasks (task, task_date, finish_date, is_done) VALUES (?, ?, ?, ?)");) {
+            statement.setString(1, taskName);
+            statement.setString(2, dateString);
+            statement.setString(3, finishDateString);
+            statement.setInt(4, 0);
             statement.executeUpdate();
 
         } catch (Exception e) {
@@ -486,7 +523,7 @@ public class Main extends JFrame {
 
     public void ensureFinishedTableExists() {
 
-        String sql = "CREATE TABLE IF NOT EXISTS finisehdtasks ("
+        String sql = "CREATE TABLE IF NOT EXISTS finishedtasks ("
                 + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + "task TEXT NOT NULL,"
                 + "task_date TEXT NOT NULL,"
@@ -502,9 +539,9 @@ public class Main extends JFrame {
         }
     }
 
-    public Task getTaskAt(int row){
+   /* public Task getTaskAt(int row){
         return tasks.get(row);
-    }
+    }*/
 
     public static void main(String[] args) {
         Main window = new Main();
