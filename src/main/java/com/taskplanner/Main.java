@@ -38,12 +38,12 @@ public class Main extends JFrame {
     private JButton editButton = new JButton("Edit Task");
     private static final String url = "jdbc:sqlite:tasks.db";
     private JButton finishedTasksButton = new JButton("Finished Tasks");
-
+    private JTable finishedTaskTable;
 
     public Main() {
         // window-settings
-        //setExtendedState(JFrame.MAXIMIZED_BOTH); // fullscreen
-        setSize(1000,650);
+        // setExtendedState(JFrame.MAXIMIZED_BOTH); // fullscreen
+        setSize(1000, 650);
         setLocationRelativeTo(null);
         setTitle("Task Planner");
         Image icon = Toolkit.getDefaultToolkit().getImage(getClass().getResource("/task.png"));
@@ -72,12 +72,11 @@ public class Main extends JFrame {
         JScrollPane scroll = new JScrollPane(taskTable);
         add(scroll, BorderLayout.CENTER);
 
-
-        scroll.getViewport().addMouseListener(new MouseAdapter(){
+        scroll.getViewport().addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(MouseEvent e){
+            public void mouseClicked(MouseEvent e) {
                 int row = taskTable.rowAtPoint(e.getPoint());
-                if(row == -1){
+                if (row == -1) {
                     taskTable.clearSelection();
                     taskTable.getSelectionModel().setAnchorSelectionIndex(-1);
                     taskTable.getSelectionModel().setLeadSelectionIndex(-1);
@@ -85,7 +84,6 @@ public class Main extends JFrame {
                 }
             }
         });
-
 
         addButton.addActionListener(e -> addTask());
         deleteButton.addActionListener(e -> deleteTask());
@@ -120,21 +118,21 @@ public class Main extends JFrame {
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
 
-        for(int col=0;col<taskTable.getColumnCount()-1;col++){
+        for (int col = 0; col < taskTable.getColumnCount() - 1; col++) {
             taskTable.getColumnModel().getColumn(col).setCellRenderer(center);
         }
         taskTable.setFont(new Font("SansSerif", Font.PLAIN, 24));
 
-        model.addTableModelListener(e->{
+        model.addTableModelListener(e -> {
             if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 3) {
-            int modelRow = e.getFirstRow();
-            Task t = model.getTaskAtModelRow(modelRow);
+                int modelRow = e.getFirstRow();
+                Task t = model.getTaskAtModelRow(modelRow);
 
-            if (t.isDone) {           // move only when checked
-                moveToFinishedTasks(t);
-                refreshTaskList();
+                if (t.isDone) { // move only when checked
+                    moveToFinishedTasks(t);
+                    refreshTaskList();
+                }
             }
-        }
         });
     }
 
@@ -148,22 +146,22 @@ public class Main extends JFrame {
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
         center.setHorizontalAlignment(SwingConstants.CENTER);
 
-        for(int col=0;col<table.getColumnCount()-1;col++){
+        for (int col = 0; col < table.getColumnCount() - 1; col++) {
             table.getColumnModel().getColumn(col).setCellRenderer(center);
         }
         table.setFont(new Font("SansSerif", Font.PLAIN, 24));
 
-        fmodel.addTableModelListener(e->{
+        fmodel.addTableModelListener(e -> {
             if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 3) {
-            int modelRow = e.getFirstRow();
-            Task t = fmodel.getTaskAtModelRow(modelRow);
+                int modelRow = e.getFirstRow();
+                Task t = fmodel.getTaskAtModelRow(modelRow);
 
-            if (!t.isDone) {          // move back only when unchecked
-                moveToTasks(t);
-                refreshFinishedTaskList(table);
-                refreshTaskList();
+                if (!t.isDone) { // move back only when unchecked
+                    moveToTasks(t);
+                    refreshFinishedTaskList(table);
+                    refreshTaskList();
+                }
             }
-        }
         });
     }
 
@@ -171,7 +169,7 @@ public class Main extends JFrame {
         List<Task> result = new ArrayList<>();
 
         // database connection
-        
+
         try (
                 Connection conn = DriverManager.getConnection(url);
                 PreparedStatement statement = conn
@@ -197,11 +195,12 @@ public class Main extends JFrame {
 
         return result;
     }
+
     public List<Task> loadTasksFromFinishedDatabase() {
         List<Task> result = new ArrayList<>();
 
         // database connection
-        
+
         try (
                 Connection conn = DriverManager.getConnection(url);
                 PreparedStatement statement = conn
@@ -274,7 +273,6 @@ public class Main extends JFrame {
             return;
         }
 
-        
     }
 
     public void editTask() {
@@ -357,21 +355,20 @@ public class Main extends JFrame {
         editdialog.setVisible(true);
     }
 
-    public void showFinishedTasks(){
-     JDialog showFinishedTasksDialog = new JDialog(this, "Finished Tasks", true);
+    public void showFinishedTasks() {
+        JDialog showFinishedTasksDialog = new JDialog(this, "Finished Tasks", true);
         showFinishedTasksDialog.setSize(1000, 650);
         showFinishedTasksDialog.setLayout(new BorderLayout());
 
- 
         JPanel btnPanel = new JPanel();
         JButton closeBtn = new JButton("Close Window");
         btnPanel.add(closeBtn);
         showFinishedTasksDialog.add(btnPanel, BorderLayout.SOUTH);
 
-        closeBtn.addActionListener(e-> showFinishedTasksDialog.dispose());
+        closeBtn.addActionListener(e -> showFinishedTasksDialog.dispose());
 
-        JTable finishedTaskTable = new JTable();
-        finishedTaskTable.setFont(new Font ("SansSerif", Font.PLAIN, 20));
+        finishedTaskTable = new JTable();
+        finishedTaskTable.setFont(new Font("SansSerif", Font.PLAIN, 20));
         finishedTaskTable.setRowHeight(28);
 
         JScrollPane scrollFinished = new JScrollPane(finishedTaskTable);
@@ -383,10 +380,10 @@ public class Main extends JFrame {
         showFinishedTasksDialog.setVisible(true);
     }
 
-    public void moveToFinishedTasks(Task t){
+    public void moveToFinishedTasks(Task t) {
         String taskName = t.task;
         String dateString = t.startDate.toString();
-        String finishDateString = t.finishDate.toString();
+        String finishDateString = (t.finishDate == null) ? null : t.finishDate.toString();
         int id = t.id;
 
         if (taskName.isEmpty()) {
@@ -417,14 +414,16 @@ public class Main extends JFrame {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        refreshFinishedTaskList();
+        if (finishedTaskTable != null) {
+            refreshFinishedTaskList(finishedTaskTable);
+        }
         refreshTaskList();
     }
 
-    public void moveToTasks(Task t){
+    public void moveToTasks(Task t) {
         String taskName = t.task;
         String dateString = t.startDate.toString();
-        String finishDateString = t.finishDate.toString();
+        String finishDateString = (t.finishDate == null) ? null : t.finishDate.toString();
         int id = t.id;
 
         if (taskName.isEmpty()) {
@@ -456,7 +455,9 @@ public class Main extends JFrame {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        refreshFinishedTaskList();
+        if (finishedTaskTable != null) {
+            refreshFinishedTaskList(finishedTaskTable);
+        }
         refreshTaskList();
     }
 
@@ -470,7 +471,7 @@ public class Main extends JFrame {
             this.tableName = tableName;
         }
 
-        public Task getTaskAtModelRow(int modelRow){
+        public Task getTaskAtModelRow(int modelRow) {
             return tasks.get(modelRow);
         }
 
@@ -519,25 +520,25 @@ public class Main extends JFrame {
 
         @Override
         public void setValueAt(Object value, int row, int col) {
-            if(col != 3) return;
+            if (col != 3)
+                return;
 
             Task t = tasks.get(row);
             boolean newDone = (Boolean) value;
 
-            t.isDOne = newDone;
+            t.isDone = newDone;
 
             String sql = "UPDATE " + tableName + " SET is_done = ? WHERE id = ?";
 
-            
-                try (Connection conn = DriverManager.getConnection(url);
-                PreparedStatement stmt = conn.prepareStatement(sql)) {
-                    stmt.setInt(1, t.isDone ? 1 : 0);
-                    stmt.setInt(2, t.id);
-                    stmt.execute();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    }
-            
+            try (Connection conn = DriverManager.getConnection(url);
+                    PreparedStatement stmt = conn.prepareStatement(sql)) {
+                stmt.setInt(1, t.isDone ? 1 : 0);
+                stmt.setInt(2, t.id);
+                stmt.executeUpdate();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+
             fireTableRowsUpdated(row, row);
         }
     }
@@ -577,7 +578,6 @@ public class Main extends JFrame {
             e.printStackTrace();
         }
     }
-
 
     public static void main(String[] args) {
         Main window = new Main();
