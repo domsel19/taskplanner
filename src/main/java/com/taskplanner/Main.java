@@ -114,7 +114,7 @@ public class Main extends JFrame {
         ensureTableExists();
         List<Task> tasks = loadTasksFromDatabase();
 
-        TaskTableModel model = new TaskTableModel(tasks);
+        TaskTableModel model = new TaskTableModel(tasks, "tasks");
         taskTable.setModel(model);
 
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
@@ -126,15 +126,15 @@ public class Main extends JFrame {
         taskTable.setFont(new Font("SansSerif", Font.PLAIN, 24));
 
         model.addTableModelListener(e->{
-            if (e.getType() == TableModelEvent.UPDATE){
-                int row = e.getFirstRow();
-                int col = e.getColumn();
-                if (col == 3){
-                    Task t = ((TaskTableModel) taskTable.getModel()).tasks.get(row);
-                    //Task t = model.getTaskAt(row);
-                    moveToFinishedTasks(t);
-                }
+            if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 3) {
+            int modelRow = e.getFirstRow();
+            Task t = model.getTaskAtModelRow(modelRow);
+
+            if (t.isDone) {           // move only when checked
+                moveToFinishedTasks(t);
+                refreshTaskList();
             }
+        }
         });
     }
 
@@ -142,7 +142,7 @@ public class Main extends JFrame {
         ensureFinishedTableExists();
         List<Task> ftasks = loadTasksFromFinishedDatabase();
 
-        TaskTableModel fmodel = new TaskTableModel(ftasks);
+        TaskTableModel fmodel = new TaskTableModel(ftasks, "finishedtasks");
         table.setModel(fmodel);
 
         DefaultTableCellRenderer center = new DefaultTableCellRenderer();
@@ -154,15 +154,16 @@ public class Main extends JFrame {
         table.setFont(new Font("SansSerif", Font.PLAIN, 24));
 
         fmodel.addTableModelListener(e->{
-            if (e.getType() == TableModelEvent.UPDATE){
-                int row = e.getFirstRow();
-                int col = e.getColumn();
-                if (col == 3){
-                    Task t = ((TaskTableModel) taskTable.getModel()).tasks.get(row);
-                    //Task t = model.getTaskAt(row);
-                    moveToTasks(t);
-                }
+            if (e.getType() == TableModelEvent.UPDATE && e.getColumn() == 3) {
+            int modelRow = e.getFirstRow();
+            Task t = fmodel.getTaskAtModelRow(modelRow);
+
+            if (!t.isDone) {          // move back only when unchecked
+                moveToTasks(t);
+                refreshFinishedTaskList(table);
+                refreshTaskList();
             }
+        }
         });
     }
 
@@ -358,7 +359,7 @@ public class Main extends JFrame {
 
     public void showFinishedTasks(){
      JDialog showFinishedTasksDialog = new JDialog(this, "Finished Tasks", true);
-        showFinishedTasksDialog.setSize(800, 500);
+        showFinishedTasksDialog.setSize(1000, 650);
         showFinishedTasksDialog.setLayout(new BorderLayout());
 
  
@@ -386,6 +387,7 @@ public class Main extends JFrame {
         String taskName = t.task;
         String dateString = t.startDate.toString();
         String finishDateString = t.finishDate.toString();
+        int id = t.id;
 
         if (taskName.isEmpty()) {
             return;
@@ -404,13 +406,26 @@ public class Main extends JFrame {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        try (
+                Connection conn = DriverManager.getConnection(url);
+                PreparedStatement statement = conn
+                        .prepareStatement(
+                                "DELETE FROM tasks WHERE id = ?");) {
+            statement.setInt(1, id);
+            statement.executeUpdate();
 
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        refreshFinishedTaskList();
+        refreshTaskList();
     }
 
     public void moveToTasks(Task t){
         String taskName = t.task;
         String dateString = t.startDate.toString();
         String finishDateString = t.finishDate.toString();
+        int id = t.id;
 
         if (taskName.isEmpty()) {
             return;
@@ -430,14 +445,33 @@ public class Main extends JFrame {
             e.printStackTrace();
         }
 
+        try (
+                Connection conn = DriverManager.getConnection(url);
+                PreparedStatement statement = conn
+                        .prepareStatement(
+                                "DELETE FROM finishedtasks WHERE id = ?");) {
+            statement.setInt(1, id);
+            statement.executeUpdate();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        refreshFinishedTaskList();
+        refreshTaskList();
     }
 
     public class TaskTableModel extends AbstractTableModel {
-        private String[] columns = { "Task", "Start Date", "Finish Date", "Done" };
-        private List<Task> tasks;
+        private final String[] columns = { "Task", "Start Date", "Finish Date", "Done" };
+        private final List<Task> tasks;
+        private final String tableName;
 
-        public TaskTableModel(List<Task> tasks) {
+        public TaskTableModel(List<Task> tasks, String tableName) {
             this.tasks = tasks;
+            this.tableName = tableName;
+        }
+
+        public Task getTaskAtModelRow(int modelRow){
+            return tasks.get(modelRow);
         }
 
         @Override
@@ -485,11 +519,16 @@ public class Main extends JFrame {
 
         @Override
         public void setValueAt(Object value, int row, int col) {
-            Task t = tasks.get(row);
-            String sql = "UPDATE tasks SET is_done = ? WHERE id = ?";
+            if(col != 3) return;
 
-            if(col==3){
-                t.isDone = (boolean) value;
+            Task t = tasks.get(row);
+            boolean newDone = (Boolean) value;
+
+            t.isDOne = newDone;
+
+            String sql = "UPDATE " + tableName + " SET is_done = ? WHERE id = ?";
+
+            
                 try (Connection conn = DriverManager.getConnection(url);
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
                     stmt.setInt(1, t.isDone ? 1 : 0);
@@ -498,7 +537,7 @@ public class Main extends JFrame {
                 } catch (Exception e) {
                     e.printStackTrace();
                     }
-            }
+            
             fireTableRowsUpdated(row, row);
         }
     }
@@ -539,9 +578,6 @@ public class Main extends JFrame {
         }
     }
 
-   /* public Task getTaskAt(int row){
-        return tasks.get(row);
-    }*/
 
     public static void main(String[] args) {
         Main window = new Main();
